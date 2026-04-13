@@ -1126,7 +1126,7 @@ do
 end
 
 -- ================================================================
--- PAGE: TELEPORT (FULL LOCATIONS)
+-- PAGE: TELEPORT (FIXED - WAIT FOR RESPAWN)
 -- ================================================================
 do
     local TPSection = Pages["Teleport"]:Section({Name = "teleport locations", Icon = "136623465713368", Side = 1})
@@ -1147,20 +1147,110 @@ do
         {name="Apart 6 (Kompor)", x=896.86053466796880, y=11.042763710021973, z=38.65096664428711},
     }
 
+    local tpDestination = nil
+    local isRespawning = false
+
+    -- Tunggu karakter respawn dan teleport
+    local function onCharacterAdded(char)
+        if not tpDestination then return end
+        
+        task.spawn(function()
+            -- Tunggu karakter benar-benar stabil
+            local hrp = char:WaitForChild("HumanoidRootPart", 15)
+            local hum = char:WaitForChild("Humanoid", 15)
+            
+            if not hrp or not hum then
+                tpDestination = nil
+                return
+            end
+            
+            -- Tunggu health penuh dan karakter tidak dalam keadaan mati
+            repeat
+                task.wait(0.1)
+            until hum.Health > 0 and hum.Health == hum.MaxHealth
+            
+            -- Tunggu sedikit agar server sinkron
+            task.wait(0.5)
+            
+            -- Teleport ke tujuan
+            local success, err = pcall(function()
+                hrp.CFrame = CFrame.new(tpDestination.x, tpDestination.y + 3, tpDestination.z)
+            end)
+            
+            if success then
+                if tpStatusValue then
+                    tpStatusValue.Text = "ARRIVED"
+                    tpStatusValue.TextColor3 = Color3.fromRGB(0, 255, 136)
+                end
+                task.wait(2)
+                if tpStatusValue then
+                    tpStatusValue.Text = "STANDBY"
+                    tpStatusValue.TextColor3 = Color3.fromRGB(255, 215, 0)
+                end
+            else
+                if tpStatusValue then
+                    tpStatusValue.Text = "TP FAILED"
+                    tpStatusValue.TextColor3 = Color3.fromRGB(255, 60, 90)
+                end
+            end
+            
+            tpDestination = nil
+            isRespawning = false
+        end)
+    end
+
+    -- Hook ke karakter
+    if LocalPlayer.Character then
+        onCharacterAdded(LocalPlayer.Character)
+    end
+    LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+
+    -- Fungsi teleport utama
     local function tpTo(x, y, z)
+        if isRespawning then
+            Library:Notification({
+                Name = "Teleport",
+                Description = "Tunggu teleport sebelumnya selesai",
+                Duration = 2,
+                Icon = "97118059177470"
+            })
+            return
+        end
+        
         local char = LocalPlayer.Character
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if char and hum and hum.Health > 0 then
-            hum.Health = 0
+        
+        if not char or not hum then
+            -- Jika belum ada karakter, langsung set destination
+            tpDestination = {x = x, y = y, z = z}
+            return
         end
-        task.wait(0.5)
-        local newChar = LocalPlayer.Character
-        local hrp = newChar and newChar:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = CFrame.new(x, y + 3, z)
+        
+        -- Set destination dan bunuh karakter
+        tpDestination = {x = x, y = y, z = z}
+        isRespawning = true
+        
+        if tpStatusValue then
+            tpStatusValue.Text = "KILL-RESPAWN-TP"
+            tpStatusValue.TextColor3 = Color3.fromRGB(255, 215, 0)
+        end
+        
+        -- Bunuh karakter
+        if hum.Health > 0 then
+            hum.Health = 0
         end
     end
 
+    -- Status display
+    TPSection:Label("Status", "Left")
+    local tpStatLbl = TPSection:Label("STANDBY", "Left")
+    tpStatLbl.TextColor3 = Color3.fromRGB(255, 215, 0)
+    tpStatusValue = tpStatLbl
+
+    TPSection:Label("Kill -> Respawn -> TP otomatis ke tujuan", "Left")
+    TPSection:Label("Butuh 3-5 detik sampai karakter stabil", "Left")
+
+    -- Location Buttons
     for i, loc in ipairs(tpLocs) do
         TPSection:Button({
             Name = loc.name,
