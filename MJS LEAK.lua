@@ -964,11 +964,13 @@ do
         end
     })
 
-    -- ESP Render Loop
+    -- ESP Render Loop (FIXED - HIDE when truly out of frame)
     RunService.Heartbeat:Connect(function(dt)
         if not espEnabled then
             for _, drawings in pairs(espCache) do
-                for _, o in pairs(drawings) do pcall(function() o.Visible = false end) end
+                for _, o in pairs(drawings) do
+                    pcall(function() o.Visible = false end)
+                end
             end
             return
         end
@@ -978,55 +980,82 @@ do
         local myChar = LocalPlayer.Character
         local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
         local myPos = myHRP and myHRP.Position
+        local camera = workspace.CurrentCamera
+        local viewportX = camera.ViewportSize.X
+        local viewportY = camera.ViewportSize.Y
+        
         for player, drawings in pairs(espCache) do
-            local box, nameL, hpBg, hpFl, dL = unpack(drawings)
+            local box = drawings[1]
+            local nameL = drawings[2]
+            local hpBg = drawings[3]
+            local hpFl = drawings[4]
+            local dL = drawings[5]
+            
+            local function hideAll()
+                if box then box.Visible = false end
+                if nameL then nameL.Visible = false end
+                if hpBg then hpBg.Visible = false end
+                if hpFl then hpFl.Visible = false end
+                if dL then dL.Visible = false end
+            end
+            
             local char = player.Character
             local hum = char and char:FindFirstChildOfClass("Humanoid")
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local head = char and char:FindFirstChild("Head")
+            
             if not (char and hum and root and head and hum.Health > 0) then
-                box.Visible = false
-                nameL.Visible = false
-                hpBg.Visible = false
-                hpFl.Visible = false
-                dL.Visible = false
+                hideAll()
             else
                 local dist3D = myPos and (root.Position - myPos).Magnitude or 0
                 if myPos and espMaxDist > 0 and dist3D > espMaxDist then
-                    box.Visible = false
-                    nameL.Visible = false
-                    hpBg.Visible = false
-                    hpFl.Visible = false
-                    dL.Visible = false
+                    hideAll()
                 else
-                    local hrpPos, hrpVis = Camera:WorldToViewportPoint(root.Position)
-                    local headPos, headVis = Camera:WorldToViewportPoint(head.Position)
-                    if not (hrpVis and headVis) then
-                        box.Visible = false
+                    -- Konversi ke posisi layar
+                    local rootPos, rootOnScreen = camera:WorldToViewportPoint(root.Position)
+                    local headPos, headOnScreen = camera:WorldToViewportPoint(head.Position)
+                    
+                    -- Hitung dimensi box
+                    local height = math.abs(headPos.Y - rootPos.Y) * 1.7 + (boxPadding * 2)
+                    local width = height * 0.55
+                    local boxX = rootPos.X - width / 2
+                    local boxY = headPos.Y - boxPadding
+                    
+                    -- CEK APAKAH BOX MASIH DI DALAM LAYAR
+                    local isBoxVisible = (boxX + width > 0 and boxX < viewportX and boxY + height > 0 and boxY < viewportY)
+                    
+                    if not (rootOnScreen and headOnScreen and isBoxVisible) then
+                        hideAll()
                     else
-                        local height = math.abs(headPos.Y - hrpPos.Y) * 1.7 + (boxPadding * 2)
-                        local width = height * 0.55
-                        local boxX = hrpPos.X - width / 2
-                        local boxY = headPos.Y - boxPadding
-                        box.Color = espBoxColor
-                        box.Size = Vector2.new(width, height)
-                        box.Position = Vector2.new(boxX, boxY)
-                        box.Visible = true
-                        nameL.Text = player.Name
-                        nameL.Color = espNameColor
-                        nameL.Position = Vector2.new(hrpPos.X, boxY - 14)
-                        nameL.Visible = true
-                        local hpR = hum.MaxHealth > 0 and math.clamp(hum.Health / hum.MaxHealth, 0, 1) or 1
-                        hpBg.Size = Vector2.new(4, height - 4)
-                        hpBg.Position = Vector2.new(boxX - 8, boxY + 2)
-                        hpBg.Visible = true
-                        hpFl.Color = Color3.fromRGB(255 * (1 - hpR), 255 * hpR, 80)
-                        hpFl.Size = Vector2.new(2, (height - 6) * hpR)
-                        hpFl.Position = Vector2.new(boxX - 7, boxY + 3 + (height - 6) * (1 - hpR))
-                        hpFl.Visible = true
-                        dL.Text = math.floor(dist3D) .. "m"
-                        dL.Position = Vector2.new(hrpPos.X, boxY + height + 2)
-                        dL.Visible = true
+                        if box then
+                            box.Color = espBoxColor
+                            box.Size = Vector2.new(width, height)
+                            box.Position = Vector2.new(boxX, boxY)
+                            box.Visible = true
+                        end
+                        if nameL then
+                            nameL.Text = player.Name
+                            nameL.Color = espNameColor
+                            nameL.Position = Vector2.new(rootPos.X, boxY - 14)
+                            nameL.Visible = true
+                        end
+                        if hpBg then
+                            local hpR = hum.MaxHealth > 0 and math.clamp(hum.Health / hum.MaxHealth, 0, 1) or 1
+                            hpBg.Size = Vector2.new(4, height - 4)
+                            hpBg.Position = Vector2.new(boxX - 8, boxY + 2)
+                            hpBg.Visible = true
+                            if hpFl then
+                                hpFl.Color = Color3.fromRGB(255 * (1 - hpR), 255 * hpR, 80)
+                                hpFl.Size = Vector2.new(2, (height - 6) * hpR)
+                                hpFl.Position = Vector2.new(boxX - 7, boxY + 3 + (height - 6) * (1 - hpR))
+                                hpFl.Visible = true
+                            end
+                        end
+                        if dL then
+                            dL.Text = math.floor(dist3D) .. "m"
+                            dL.Position = Vector2.new(rootPos.X, boxY + height + 2)
+                            dL.Visible = true
+                        end
                     end
                 end
             end
@@ -1174,13 +1203,13 @@ do
     local TPSection = Pages["Teleport"]:Section({Name = "teleport locations", Icon = "136623465713368", Side = 1})
 
     local tpLocs = {
-        {name="Dealership", x=732.1171264648438, y=3.3621320724487305, z=406.0807189941406},
+        {name="Dealership", x=753.20, y=4.63, z=437.04},
         {name="Jual/Beli Marshmellow", x=510.9961853027344, y=3.5872106552124023, z=598.3929443359375},
         {name="Tier", x=1094.7406005859375, y=3.188796043395996, z=158.09230041503906},
         {name="Casino", x=1154.863525390625, y=4.289375305175781, z=-46.8486328125},
         {name="Jual Casino", x=1017.5814819335938, y=4.545021533966064, z=-321.7923889160156},
-        {name="GS Ujung", x=-464.5489501953125, y=3.7371325492858887, z=335.3158874511719},
-        {name="GS Mid", x=218.74879455566406, y=3.729842185974121, z=-161.87036132812},
+        {name="GS Ujung", x=-465.51, y=4.79, z=360.47},
+        {name="GS Mid", x=218.57, y=4.65, z=-173.54},
         {name="Apart 1 (Kompor)", x=1141.8009033203125, y=11.041934967041016, z=450.3515319824219},
         {name="Apart 2 (Kompor)", x=1142.488525390625, y=11.0384630731506348, z=421.6380920410156},
         {name="Apart 3 (Kompor)", x=984.08892822265620, y=11.029658317565918, z=248.8081359863281},
@@ -1364,21 +1393,37 @@ do
     end
 
     local vtpLocs = {
-        {name="Dealership", x=732.1171264648438, y=3.3621320724487305, z=406.0807189941406},
+        {name="Dealership", x=753.20, y=4.63, z=437.04},
         {name="Jual/Beli Marshmellow", x=510.9961853027344, y=3.5872106552124023, z=598.3929443359375},
         {name="Tier", x=1094.7406005859375, y=3.188796043395996, z=158.09230041503906},
         {name="Casino", x=1154.863525390625, y=4.289375305175781, z=-46.8486328125},
         {name="Jual Casino", x=1017.5814819335938, y=4.545021533966064, z=-321.7923889160156},
-        {name="GS Ujung", x=-464.5489501953125, y=3.7371325492858887, z=335.3158874511719},
-        {name="GS Mid", x=218.74879455566406, y=3.729842185974121, z=-161.87036132812},
+        {name="GS Ujung", x=-465.51, y=4.79, z=360.47},
+        {name="GS Mid", x=218.57, y=4.65, z=-173.54},
         {name="Safe", x=120.85433197021484, y=4.297231197357178, z=-587.6337280273438},
-        {name="Apart 1 (rs 1)", x=1141.8009033203125, y=11.041934967041016, z=450.3515319824219},
-        {name="Apart 2 (rs 2)", x=1142.488525390625, y=11.0384630731506348, z=421.6380920410156},
-        {name="Apart 3 (gs tier 1)", x=984.08892822265620, y=11.029658317565918, z=248.8081359863281},
-        {name="Apart 4 (gs tier 2)", x=984.09442138671880, y=11.064784049987793, z=220.2919158935547},
-        {name="Apart 5 (job sampah 1)", x=925.53119628906250, y=11.016752243041992, z=39.36603775024414},
-        {name="Apart 6 (job sampah 2)", x=896.86053466796880, y=11.042763710021973, z=38.65096664428711},
+        {name="Apart 1 (rs 1)", x=1108.93, y=11.03, z=455.77},
+        {name="Apart 2 (rs 2)", x=1109.15, y=11.04, z=427.29},
+        {name="Apart 3 (gs tier 1)", x=1017.93, y=11.01, z=243.27},
+        {name="Apart 4 (gs tier 2)", x=1018.19, y=11.03, z=214.68},
+        {name="Apart 5 (job sampah 1)", x=931.02, y=11.05, z=72.18},
+        {name="Apart 6 (job sampah 2)", x=902.45, y=11.01, z=72.21},
+        {name="Box", x=-492.35, y=4.29, z=-38.15},
+        {name="Pabrik Kentang", x=-493.88, y=4.67, z=-437.11},
+        {name="Bank", x=-43.01, y=4.66, z=-353.96},
+        {name="Cukur", x=67.62, y=4.67, z=-96.48},
+        {name="Labas", x=-767.21, y=4.30, z=-13.43},
+        {name="Doa Turf", x=-331.58, y=18.79, z=-462.96},
+        {name="Gedung Tinggi", x=3.08, y=5.36, z=256.11},
+        {name="YGZ Turf", x=8.30, y=17.82, z=288.99},
+        {name="OGZ Turf", x=113.04, y=20.32, z=-509.80},
+        {name="Donat", x=578.52, y=4.67, z=-352.95},
+        {name="GS Binary", x=-280.05, y=4.68, z=257.84},
+        {name="GS Drum", x=670.51, y=4.80, z=244.05},
+        {name="RS", x=1065.33, y=4.29, z=547.58},
+        {name="Jual Senjata", x=80.45, y=4.72, z=37.38},
+        {name="Mall", x=-748.86, y=4.69, z=549.09},
     }
+    
 
     for i, loc in ipairs(vtpLocs) do
         VehSection:Button({
