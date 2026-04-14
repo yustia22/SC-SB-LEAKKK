@@ -1126,6 +1126,48 @@ do
 end
 
 -- ================================================================
+-- BLINK TP (Kiwisense Version - Tampilan Sama Persis dengan Asli)
+-- ================================================================
+do
+    local BlinkSection = Pages["General"]:Section({Name = "BLINK TP", Icon = "136623465713368", Side = 2})
+    
+    -- Info card (mirip blinkInfoCard asli)
+    BlinkSection:Label("Tekan [T] untuk maju 6 studs saat blink aktif", "Left")
+    
+    -- Toggle dengan efek visual (mirip toggle switch asli)
+    local blinkEnabled = false
+    
+    local blinkToggle = BlinkSection:Toggle({
+        Name = "⚡ Blink TP  [T]",
+        Flag = "BlinkTP",
+        Default = false,
+        Callback = function(Value)
+            blinkEnabled = Value
+        end
+    })
+    
+    -- BLINK FUNCTION (SAME AS ORIGINAL)
+    local function doBlink()
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = root.CFrame + (root.CFrame.LookVector * 6)
+        end
+    end
+    
+    -- Keybind T (SAME AS ORIGINAL)
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        if input.KeyCode == Enum.KeyCode.T and blinkEnabled then
+            doBlink()
+        end
+    end)
+    
+    -- Catatan tambahan
+    BlinkSection:Label("Aktifkan toggle di atas, lalu tekan T untuk blink 6 studs", "Left")
+end
+
+-- ================================================================
 -- PAGE: TELEPORT (FIXED - WAIT FOR RESPAWN)
 -- ================================================================
 do
@@ -1330,12 +1372,12 @@ do
         {name="GS Ujung", x=-464.5489501953125, y=3.7371325492858887, z=335.3158874511719},
         {name="GS Mid", x=218.74879455566406, y=3.729842185974121, z=-161.87036132812},
         {name="Safe", x=120.85433197021484, y=4.297231197357178, z=-587.6337280273438},
-        {name="Apart 1 (Kompor)", x=1141.8009033203125, y=11.041934967041016, z=450.3515319824219},
-        {name="Apart 2 (Kompor)", x=1142.488525390625, y=11.0384630731506348, z=421.6380920410156},
-        {name="Apart 3 (Kompor)", x=984.08892822265620, y=11.029658317565918, z=248.8081359863281},
-        {name="Apart 4 (Kompor)", x=984.09442138671880, y=11.064784049987793, z=220.2919158935547},
-        {name="Apart 5 (Kompor)", x=925.53119628906250, y=11.016752243041992, z=39.36603775024414},
-        {name="Apart 6 (Kompor)", x=896.86053466796880, y=11.042763710021973, z=38.65096664428711},
+        {name="Apart 1 (rs 1)", x=1141.8009033203125, y=11.041934967041016, z=450.3515319824219},
+        {name="Apart 2 (rs 2)", x=1142.488525390625, y=11.0384630731506348, z=421.6380920410156},
+        {name="Apart 3 (gs tier 1)", x=984.08892822265620, y=11.029658317565918, z=248.8081359863281},
+        {name="Apart 4 (gs tier 2)", x=984.09442138671880, y=11.064784049987793, z=220.2919158935547},
+        {name="Apart 5 (job sampah 1)", x=925.53119628906250, y=11.016752243041992, z=39.36603775024414},
+        {name="Apart 6 (job sampah 2)", x=896.86053466796880, y=11.042763710021973, z=38.65096664428711},
     }
 
     for i, loc in ipairs(vtpLocs) do
@@ -1382,13 +1424,14 @@ do
         {name = "Apart 1", x = 1141.801, y = 11.042, z = 450.352},
         {name = "Apart 2", x = 1142.489, y = 11.038, z = 421.638},
         {name = "Apart 3", x = 984.089, y = 11.030, z = 248.808},
+        {name = "Apart 4", x = 984.094, y = 11.064, z = 220.291},
     }
     fullySavedPos = Vector3.new(1141.801, 11.042, 450.352)
 
     ApartSection:Dropdown({
         Name = "pilih apart",
         Flag = "ApartSelect",
-        Items = {"Apart 1", "Apart 2", "Apart 3"},
+        Items = {"Apart 1", "Apart 2", "Apart 3", "Apart 4"},
         Default = "Apart 1",
         Callback = function(Value)
             for _, apart in ipairs(apartList) do
