@@ -10,8 +10,18 @@
 local Bypass = {
     Hooks = {},
     Stealth = {},
-    Patterns = {}
+    Patterns = {},
+    KillFakeHandshake = {}
 }
+
+-- KILL FAKE HANDSHAKE
+local function killFakeHandshake()
+    local fake = MemoryStoreService:FindFirstChild("Hyphon_Check")
+    if fake and fake:IsA("RemoteEvent") then
+        pcall(function() fake:Destroy() end)
+    end
+end
+killFakeHandshake()
 
 Bypass.Hooks = {
     Trampoline = function(target, hook)
