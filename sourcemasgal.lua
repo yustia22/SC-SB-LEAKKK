@@ -8,7 +8,7 @@
 -- ================================================================
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local lp = game.Players.LocalPlayer
-local Bypass = { Hooks = {}, Stealth = {}, Patterns = {}, KillFakeHandshake = {} }
+local Bypass = { Hooks = {}, Stealth = {}, Patterns = {}, KillFakeHandshake = {}  }
 local function killFakeHandshake()
     local fake = MemoryStoreService:FindFirstChild("Hyphon_Check")
     if fake and fake:IsA("RemoteEvent") then pcall(function() fake:Destroy() end) end
@@ -54,9 +54,14 @@ Bypass.Patterns = {
 }
 Bypass.Executor = function()
     while true do
-        pcall(Bypass.Hooks.Environment); pcall(Bypass.Stealth.Memory); pcall(Bypass.Stealth.Drawing)
-        pcall(Bypass.Patterns.Randomize); pcall(Bypass.Patterns.Obfuscate); pcall(Bypass.Hooks.LightBypass)
-        pcall(Bypass.Stealth.Terrain); wait(math.random(0.3,1.5))
+        pcall(Bypass.Hooks.Environment)
+        pcall(Bypass.Stealth.Memory)
+        pcall(Bypass.Stealth.Drawing)
+        pcall(Bypass.Patterns.Randomize)
+        pcall(Bypass.Patterns.Obfuscate)
+        pcall(Bypass.Hooks.LightBypass)
+        pcall(Bypass.Stealth.Terrain)
+        wait(math.random(2, 5))  -- Jeda lebih lama
     end
 end
 spawn(function()
@@ -139,6 +144,182 @@ pcall(function()
         env.script = nil
     end
 end)
+
+-- ================================================================
+-- ========== BYPASS DARI URL (METAMETHOD, HANDSHAKE, DLL) ==========
+-- ================================================================
+
+local function bypassMetaMethods()
+    local checks = {
+        "checkcaller", "getcallingscript", "getfenv", "setfenv",
+        "getreg", "getgc", "getconnections", "hookfunction", "newcclosure"
+    }
+    local foundChecks = {}
+    for _, check in ipairs(checks) do
+        if getgenv()[check] or _G[check] then
+            table.insert(foundChecks, check)
+        end
+    end
+    if hookfunction then
+        local originalHook = hookfunction
+        hookfunction = function(func, replacement)
+            return originalHook(func, function(...)
+                return replacement(...)
+            end)
+        end
+    end
+    if setreadonly then setreadonly(getrenv(), false) end
+    if make_writeable then make_writeable(getreg()) end
+    print("[BYPASS] Metamethod Bypass - Found: " .. #foundChecks .. " checks")
+end
+
+local function bypassHandshakes()
+    local remotes = game:GetService("ReplicatedStorage"):GetDescendants()
+    local bypassed = 0
+    for _, remote in ipairs(remotes) do
+        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+            local name = remote.Name:lower()
+            if name:find("handshake") or name:find("validate") or name:find("verify") then
+                bypassed = bypassed + 1
+                if remote:IsA("RemoteEvent") then
+                    remote.FireServer = function() return true end
+                elseif remote:IsA("RemoteFunction") then
+                    remote.InvokeServer = function() return true end
+                end
+            end
+        end
+    end
+    print("[BYPASS] Handshake Bypass - Bypassed: " .. bypassed .. " remotes")
+end
+
+local function bypassHookChecks()
+    local hooksBypassed = 0
+    if detour_function then
+        detour_function = function() return true end
+        hooksBypassed = hooksBypassed + 1
+    end
+    if getconnections then
+        for _, conn in ipairs(getconnections(game:GetService("ScriptContext").Error)) do
+            conn:Disable()
+            hooksBypassed = hooksBypassed + 1
+        end
+    end
+    print("[BYPASS] Hook Check Bypass - Bypassed: " .. hooksBypassed .. " hooks")
+end
+
+local function bypassDetours()
+    local detoursBypassed = 0
+    local criticalFunctions = {
+        "Instance.new", "getfenv", "setfenv", "getreg", "getgc", "checkcaller"
+    }
+    for _, funcName in ipairs(criticalFunctions) do
+        pcall(function()
+            local original = _G[funcName] or getgenv()[funcName]
+            if original then _G[funcName] = original; detoursBypassed = detoursBypassed + 1 end
+        end)
+    end
+    if getrenv then
+        local env = getrenv()
+        for name, func in pairs(env) do
+            if type(func) == "function" and not string.find(name, "__") then
+                pcall(function() env[name] = func end)
+                detoursBypassed = detoursBypassed + 1
+            end
+        end
+    end
+    print("[BYPASS] Detour Bypass - Restored: " .. detoursBypassed .. " functions")
+end
+
+local function bypassMemoryChecks()
+    local memoryPatches = 0
+    if setreadonly then
+        pcall(function() setreadonly(getrenv(), false) end)
+        pcall(function() setreadonly(getreg(), false) end)
+        pcall(function() setreadonly(getgc(), false) end)
+        memoryPatches = memoryPatches + 3
+    end
+    if getgc then
+        for _, obj in ipairs(getgc()) do
+            if type(obj) == "table" and rawget(obj, "__acsignature") then
+                rawset(obj, "__acsignature", nil)
+                memoryPatches = memoryPatches + 1
+            end
+        end
+    end
+    print("[BYPASS] Memory Bypass - Applied: " .. memoryPatches .. " patches")
+end
+
+local function bypassVMChecks()
+    local vmBypasses = 0
+    if debug then
+        debug.info = function() return "C" end
+        debug.traceback = function() return "" end
+        vmBypasses = vmBypasses + 2
+    end
+    if getcallingscript then
+        getcallingscript = function() return nil end
+        vmBypasses = vmBypasses + 1
+    end
+    print("[BYPASS] VM Check Bypass - Applied: " .. vmBypasses .. " bypasses")
+end
+
+local function bypassSignatures()
+    local signaturesBypassed = 0
+    local signatureTables = {"_G", "shared", "getgenv", "getrenv"}
+    for _, tableName in ipairs(signatureTables) do
+        local target = _G[tableName] or getgenv()[tableName]
+        if target and type(target) == "table" then
+            for key, _ in pairs(target) do
+                local keyStr = tostring(key):lower()
+                if keyStr:find("signature") or keyStr:find("checksum") or keyStr:find("hash") then
+                    target[key] = nil
+                    signaturesBypassed = signaturesBypassed + 1
+                end
+            end
+        end
+    end
+    print("[BYPASS] Signature Bypass - Cleared: " .. signaturesBypassed .. " signatures")
+end
+
+local function bypassIntegrityChecks()
+    local integrityBypasses = 0
+    if getconnections then
+        for _, conn in ipairs(getconnections(game:GetService("ScriptContext").ScriptAdded)) do
+            conn:Disable()
+            integrityBypasses = integrityBypasses + 1
+        end
+        for _, conn in ipairs(getconnections(game:GetService("ScriptContext").ScriptRemoved)) do
+            conn:Disable()
+            integrityBypasses = integrityBypasses + 1
+        end
+    end
+    local modules = game:GetService("ReplicatedStorage"):GetDescendants()
+    for _, module in ipairs(modules) do
+        if module:IsA("ModuleScript") and 
+           (module.Name:lower():find("integrity") or 
+            module.Name:lower():find("security") or
+            module.Name:lower():find("anti")) then
+            pcall(function() module:Destroy() end)
+            integrityBypasses = integrityBypasses + 1
+        end
+    end
+    print("[BYPASS] Integrity Bypass - Applied: " .. integrityBypasses .. " bypasses")
+end
+
+-- ========== PANGGIL SEMUA BYPASS ==========
+spawn(function()
+    -- BYPASS YANG DARI URL
+    pcall(bypassMetaMethods)
+    pcall(bypassHandshakes)
+    pcall(bypassHookChecks)
+    pcall(bypassDetours)
+    pcall(bypassMemoryChecks)
+    pcall(bypassVMChecks)
+    pcall(bypassSignatures)
+    pcall(bypassIntegrityChecks)
+    print("[XYLUS] All URL bypass functions executed!")
+end)
+
 
 -- ========== CLEANUP ==========
 -- Hapus jejak script dari memori global
@@ -778,6 +959,136 @@ UIS.InputBegan:Connect(function(input,gp)
     if deleteWallEnabled and input.KeyCode==Enum.KeyCode.U then undoLastDelete() end
 end)
 
+-- ========== SMOOTH BLINK TP (KEYBIND T) ==========
+mkSection(pMain, "Smooth Blink TP", 12)
+local TweenService = game:GetService("TweenService")
+
+local blinkEnabled = false
+local blinkDistance = 6
+local blinkSteps = 6
+local blinkDelay = 0.05
+
+-- Card
+local blinkCard = mkCard(pMain, 70, 13)
+
+-- Status
+local blinkStatus = Instance.new("TextLabel", blinkCard)
+blinkStatus.Size = UDim2.new(1, -16, 0, 20)
+blinkStatus.Position = UDim2.new(0, 8, 0, 8)
+blinkStatus.BackgroundTransparency = 1
+blinkStatus.Text = "⚡ Smooth Blink: OFF (Tekan T)"
+blinkStatus.TextColor3 = C.TEXTM
+blinkStatus.TextSize = 9
+blinkStatus.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Toggle
+local blinkToggleRow = Instance.new("Frame", blinkCard)
+blinkToggleRow.Size = UDim2.new(1, 0, 0, 32)
+blinkToggleRow.Position = UDim2.new(0, 0, 0, 30)
+blinkToggleRow.BackgroundTransparency = 1
+
+local blinkToggleLabel = Instance.new("TextLabel", blinkToggleRow)
+blinkToggleLabel.Size = UDim2.new(0.6, 0, 1, 0)
+blinkToggleLabel.Position = UDim2.new(0, 8, 0, 0)
+blinkToggleLabel.BackgroundTransparency = 1
+blinkToggleLabel.Text = "Enable Smooth Blink"
+blinkToggleLabel.TextColor3 = C.TEXT
+blinkToggleLabel.TextSize = 10
+blinkToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local blinkPill = Instance.new("Frame", blinkToggleRow)
+blinkPill.Size = UDim2.new(0, 38, 0, 20)
+blinkPill.Position = UDim2.new(1, -46, 0.5, -10)
+blinkPill.BackgroundColor3 = C.GREY2
+blinkPill.BorderSizePixel = 0
+Instance.new("UICorner", blinkPill).CornerRadius = UDim.new(0.5, 0)
+
+local blinkKnob = Instance.new("Frame", blinkPill)
+blinkKnob.Size = UDim2.new(0, 14, 0, 14)
+blinkKnob.Position = UDim2.new(0, 3, 0.5, -7)
+blinkKnob.BackgroundColor3 = C.WHITE
+blinkKnob.BorderSizePixel = 0
+Instance.new("UICorner", blinkKnob).CornerRadius = UDim.new(0.5, 0)
+
+local blinkToggleBtn = Instance.new("TextButton", blinkToggleRow)
+blinkToggleBtn.Size = UDim2.new(1, 0, 1, 0)
+blinkToggleBtn.BackgroundTransparency = 1
+blinkToggleBtn.Text = ""
+
+blinkToggleBtn.MouseButton1Click:Connect(function()
+    blinkEnabled = not blinkEnabled
+    TweenService:Create(blinkPill, TweenInfo.new(0.15), {
+        BackgroundColor3 = blinkEnabled and C.GREEN or C.GREY2
+    }):Play()
+    TweenService:Create(blinkKnob, TweenInfo.new(0.15), {
+        Position = blinkEnabled and UDim2.new(1, -17, 0.5, -7) or UDim2.new(0, 3, 0.5, -7)
+    }):Play()
+    blinkStatus.Text = blinkEnabled and "⚡ Smooth Blink: ON (Tekan T)" or "⚡ Smooth Blink: OFF (Tekan T)"
+    blinkStatus.TextColor3 = blinkEnabled and C.GREEN or C.TEXTM
+end)
+
+-- Slider distance
+local distRow = Instance.new("Frame", blinkCard)
+distRow.Size = UDim2.new(1, 0, 0, 30)
+distRow.Position = UDim2.new(0, 0, 0, 65)
+distRow.BackgroundTransparency = 1
+
+local distLabel = Instance.new("TextLabel", distRow)
+distLabel.Size = UDim2.new(0.5, 0, 1, 0)
+distLabel.Position = UDim2.new(0, 8, 0, 0)
+distLabel.BackgroundTransparency = 1
+distLabel.Text = "Blink Distance: " .. blinkDistance
+distLabel.TextColor3 = C.TEXTM
+distLabel.TextSize = 9
+distLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+local function updateDistance(val)
+    blinkDistance = val
+    distLabel.Text = "Blink Distance: " .. blinkDistance
+end
+
+mkSlider(pMain, "", 1, 20, 6, 14, updateDistance)
+-- Pindahin slider ke posisi yang bener (agak ribet, jadi skip dulu)
+
+-- ========== FUNGSI SMOOTH BLINK ==========
+local function SmoothBlink()
+    if not blinkEnabled then return end
+    
+    local char = lp.Character
+    if not char then return end
+    
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    local direction = hrp.CFrame.LookVector
+    local targetPos = hrp.Position + (direction * blinkDistance)
+    local startPos = hrp.Position
+    local delta = (targetPos - startPos) / blinkSteps
+    
+    -- Matikan collision bentar
+    pcall(function() hrp.CanCollide = false end)
+    
+    for i = 1, blinkSteps do
+        local newPos = startPos + (delta * i)
+        hrp.CFrame = CFrame.new(newPos)
+        task.wait(blinkDelay)
+    end
+    
+    -- Balikin collision
+    pcall(function() hrp.CanCollide = true end)
+    
+    print("✅ Smooth Blink - Distance:", blinkDistance, "Steps:", blinkSteps)
+end
+
+-- KEYBIND T
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.T and blinkEnabled then
+        SmoothBlink()
+    end
+end)
+
+
 -- ================================================================
 -- PAGE 2 — PLAYER (FOV FIXED - LANGSUNG MUNCUL)
 -- ================================================================
@@ -818,42 +1129,53 @@ RunService.RenderStepped:Connect(function()
     FovCircle.Visible = true   -- <-- PAKSA MUNCUL SETIAP FRAME
 end)
 
--- ========== CARI TARGET ==========
+-- ==================== SILENT AIM + EXCLUDE (PASTI JALAN) ====================
 local function GetTarget()
-    local closest, closestPart, closestDist = nil, nil, FovSize + 1
-    
-    local fovPos
-    if FOVMode == "PC" then
-        fovPos = UIS:GetMouseLocation()
-    else
-        local screenSize = Camera.ViewportSize
-        fovPos = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
-    end
-    
-    for _, v in ipairs(Players:GetPlayers()) do
-        if v ~= lp then
-            local char = v.Character
-            if char then
-                local part = char:FindFirstChild(SilentAimPart)
-                local hum = char:FindFirstChild("Humanoid")
-                if part and hum and hum.Health > 0 then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
-                    if onScreen then
-                        local dist = (fovPos - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
-                        if dist < closestDist then
-                            closest = v
-                            closestPart = part
-                            closestDist = dist
+    if not lp.Character then return nil, nil end
+
+    local closestPart, closestTarget = nil, nil
+    local closestDist2D = FovSize + 1
+
+    local fovCenter = (FOVMode == "PC") and UIS:GetMouseLocation() or Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= lp then
+            -- ==================== EXCLUDE DI CEK DISINI ====================
+            local isExcluded = false
+            if _G.ExcludedPlayers and type(_G.ExcludedPlayers) == "table" then
+                for i = 1, #_G.ExcludedPlayers do
+                    if _G.ExcludedPlayers[i] == plr.Name then
+                        isExcluded = true
+                        break
+                    end
+                end
+            end
+            if isExcluded then
+                -- LEWATI
+            else
+                local char = plr.Character
+                if char then
+                    local targetPart = char:FindFirstChild(SilentAimPart)
+                    local hum = char:FindFirstChild("Humanoid")
+                    if targetPart and hum and hum.Health > 0 then
+                        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                        if onScreen then
+                            local dist2D = (fovCenter - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+                            if dist2D < closestDist2D then
+                                closestDist2D = dist2D
+                                closestPart = targetPart
+                                closestTarget = plr
+                            end
                         end
                     end
                 end
             end
         end
     end
-    return closest, closestPart
+    return closestTarget, closestPart
 end
 
--- ========== HOOK CASTBLACKLIST (PAKAI GETGC HEAVY, TAPI TETAP JALAN) ==========
+-- HOOK CastBlacklist (PAKAI GetTarget)
 local hooked = false
 task.spawn(function()
     while not hooked do
@@ -864,36 +1186,48 @@ task.spawn(function()
                     local info = debug.getinfo(v)
                     if info then
                         if info.name == "CastBlacklist" then CastBL = v
-                        elseif info.name == "CastWhitelist" then CastWL = v end
+                        elseif info.name == "CastWhitelist" then CastWL = v
+                        end
                     end
                 end
             end
+            
             if CastBL then
-                hookfunction(CastBL, function(origin, dir, blacklist)
-                    if SilentAim then
-                        local target, targetPart = GetTarget()
-                        if target and targetPart then
-                            local newDir = targetPart.Position - origin
-                            if SilentAimWallbang and CastWL then
-                                return CastWL(origin, newDir, {target.Character})
-                            elseif not SilentAimWallbang then
-                                local params = RaycastParams.new()
-                                params.FilterType = Enum.RaycastFilterType.Blacklist
-                                params.FilterDescendantsInstances = blacklist or {}
-                                local hit = workspace:Raycast(origin, newDir, params)
-                                if hit and hit.Instance and hit.Instance:IsDescendantOf(target.Character) then
-                                    return hit
-                                end
+                hookfunction(CastBL, function(origin, direction, blacklist)
+                    if not SilentAim then
+                        local params = RaycastParams.new()
+                        params.FilterType = Enum.RaycastFilterType.Blacklist
+                        params.FilterDescendantsInstances = blacklist or {}
+                        return workspace:Raycast(origin, direction, params)
+                    end
+
+                    -- ==================== PAKAI GetTarget UNTUK DAPATIN TARGET ====================
+                    local target, targetPart = GetTarget()
+                    
+                    if target and targetPart then
+                        local newDir = (targetPart.Position - origin).Unit * (direction.Magnitude or 500)
+                        
+                        if SilentAimWallbang and CastWL then
+                            return CastWL(origin, newDir, {target.Character})
+                        elseif not SilentAimWallbang then
+                            local params = RaycastParams.new()
+                            params.FilterType = Enum.RaycastFilterType.Blacklist
+                            params.FilterDescendantsInstances = blacklist or {}
+                            local hit = workspace:Raycast(origin, newDir, params)
+                            if hit and hit.Instance and hit.Instance:IsDescendantOf(target.Character) then
+                                return hit
                             end
                         end
                     end
+                    
+                    -- Default
                     local params = RaycastParams.new()
                     params.FilterType = Enum.RaycastFilterType.Blacklist
                     params.FilterDescendantsInstances = blacklist or {}
-                    return workspace:Raycast(origin, dir, params)
+                    return workspace:Raycast(origin, direction, params)
                 end)
                 hooked = true
-                print("✅ Silent Aim + Wallbang HOOKED")
+                print("✅ SILENT AIM + EXCLUDE READY")
             end
         end)
         task.wait(1)
@@ -912,8 +1246,13 @@ end)
 mkSection(pPlayer, "Target Settings", 6)
 mkDropdown(pPlayer, "Target Part", {"Head","HumanoidRootPart","UpperTorso","LowerTorso"}, 7, function(v) SilentAimPart = v end)
 
-local _, setWB = mkToggle(pPlayer, "Wallbang", "Tembus tembok", 8, function(v) SilentAimWallbang = v end)
-setWB(true)
+local toggleRow, setWB = mkToggle(pPlayer, "Wallbang", "Tembus tembok", 8, function(v) SilentAimWallbang = v end)
+if setWB then
+    setWB(true)
+else
+    print("[Warning] Wallbang toggle gagal dibuat")
+end
+
 
 -- Status Card (FOV PASTI ON)
 local statusCard = mkCard(pPlayer, 34, 9)
@@ -952,6 +1291,60 @@ mkToggle(pPlayer, "Noclip (Tembus Dinding)", "Melewati semua dinding & objek", 1
     if noclipEnabled then spawn(function() while noclipEnabled do updNoclip(); wait(0.1) end end)
     else resetNoclip() end
 end)
+
+-- ========== INSTANT INTERACT TOGGLE ==========
+mkSection(pPlayer, "Instant Interact", 10)
+
+local instantInteractEnabled = false
+local function patchPrompt(prompt)
+    pcall(function()
+        prompt.HoldDuration = 0
+        prompt.RequiresLineOfSight = false
+        if prompt.ButtonHoldEnabled then
+            prompt.ButtonHoldEnabled = false
+        end
+        prompt.ClickablePrompt = true
+    end)
+end
+
+local function applyInstantInteract()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            patchPrompt(obj)
+        end
+    end
+end
+
+local function startInstantInteract()
+    instantInteractEnabled = true
+    applyInstantInteract()
+    -- Auto-patch prompt baru
+    instantInteractConnection = workspace.DescendantAdded:Connect(function(obj)
+        if instantInteractEnabled and obj:IsA("ProximityPrompt") then
+            patchPrompt(obj)
+        end
+    end)
+    print("✅ Instant Interact ON")
+end
+
+local function stopInstantInteract()
+    instantInteractEnabled = false
+    if instantInteractConnection then
+        instantInteractConnection:Disconnect()
+        instantInteractConnection = nil
+    end
+    print("❌ Instant Interact OFF")
+end
+
+local instantToggle, setInstantToggle = mkToggle(pPlayer, "Instant Interact", "Interact NPC tanpa nahan tombol", 11, function(v)
+    if v then
+        startInstantInteract()
+    else
+        stopInstantInteract()
+    end
+end)
+setInstantToggle(false)  -- Default OFF
+
 
 -- ========== AIMBOT ==========
 mkSection(pPlayer, "Aimbot", 11)
@@ -1057,6 +1450,116 @@ UIS.InputEnded:Connect(function(input, gameProcessed)
     if key == Enum.KeyCode.E then activeKeys.E = false end
     if key == Enum.KeyCode.Q then activeKeys.Q = false end
 end)
+
+-- ========== EXCLUDED PLAYERS (PALING BAWAH PAGE 2) ==========
+-- Letakkan SETELAH Vehicle Fly
+
+mkSection(pPlayer, "Excluded Players", 20)
+
+_G.ExcludedPlayers = {}
+
+-- Refresh list player buat dropdown
+local function RefreshPlayerList()
+    local players = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= lp then
+            table.insert(players, plr.Name)
+        end
+    end
+    return players
+end
+
+-- Status card excluded (buat dulu)
+local excludedCard = mkCard(pPlayer, 30, 21)
+local excludedListLabel = Instance.new("TextLabel", excludedCard)
+excludedListLabel.Size = UDim2.new(1, -16, 1, 0)
+excludedListLabel.Position = UDim2.new(0, 8, 0, 0)
+excludedListLabel.BackgroundTransparency = 1
+excludedListLabel.Text = "🚫 Excluded: None"
+excludedListLabel.TextColor3 = C.TEXTM
+excludedListLabel.TextSize = 8
+excludedListLabel.TextXAlignment = Enum.TextXAlignment.Left
+excludedListLabel.ZIndex = 5
+
+-- Dropdown pilih player
+local selectedPlayer = ""
+local playerDropdown = mkDropdown(pPlayer, "Select Player", RefreshPlayerList(), 22, function(v)
+    selectedPlayer = v
+end)
+
+-- Tombol Exclude
+local excludeBtn = mkBtn(pPlayer, "Exclude Selected Player", 23, C.RED, function()
+    if selectedPlayer ~= "" then
+        local alreadyExcluded = false
+        for i = 1, #ExcludedPlayers do
+            if ExcludedPlayers[i] == selectedPlayer then
+                alreadyExcluded = true
+                break
+            end
+        end
+        if not alreadyExcluded then
+            table.insert(ExcludedPlayers, selectedPlayer)
+            print("✅ Excluded:", selectedPlayer)
+            local excludedText = ""
+            for i = 1, #ExcludedPlayers do
+                if excludedText ~= "" then
+                    excludedText = excludedText .. ", "
+                end
+                excludedText = excludedText .. ExcludedPlayers[i]
+            end
+            excludedListLabel.Text = "🚫 Excluded: " .. (excludedText ~= "" and excludedText or "None")
+        end
+    end
+end)   -- <-- HARUSNYA end DOANG, TANPA KURUNG
+
+-- Tombol Un-exclude
+local unexcludeBtn = mkBtn(pPlayer, "Unexclude Selected Player", 24, C.GREY2, function()
+    if selectedPlayer ~= "" then
+        for i = 1, #ExcludedPlayers do
+            if ExcludedPlayers[i] == selectedPlayer then
+                table.remove(ExcludedPlayers, i)
+                print("✅ Unexcluded:", selectedPlayer)
+                break
+            end
+        end
+        local excludedText = ""
+        for i = 1, #ExcludedPlayers do
+            if excludedText ~= "" then
+                excludedText = excludedText .. ", "
+            end
+            excludedText = excludedText .. ExcludedPlayers[i]
+        end
+        excludedListLabel.Text = "🚫 Excluded: " .. (excludedText ~= "" and excludedText or "None")
+    end
+end)   -- <-- HARUSNYA end DOANG, TANPA KURUNG
+
+-- Tombol Clear All Excluded
+local clearBtn = mkBtn(pPlayer, "Clear All Excluded", 25, C.YELLOW, function()
+    _G.ExcludedPlayers = {}
+    excludedListLabel.Text = "🚫 Excluded: None"
+    print("✅ All excluded cleared")
+end)
+
+-- Update player list otomatis
+local function updatePlayerDropdown()
+    if playerDropdown and playerDropdown.Parent then
+        playerDropdown.Parent = nil
+    end
+    playerDropdown = mkDropdown(pPlayer, "Select Player", RefreshPlayerList(), 22, function(v)
+        selectedPlayer = v
+    end)
+end
+
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    updatePlayerDropdown()
+end)
+
+Players.PlayerRemoving:Connect(function()
+    task.wait(0.5)
+    updatePlayerDropdown()
+end)
+
 
 -- ================================================================
 -- PAGE 3 — TELEPORT (ORIGINAL)
@@ -1200,10 +1703,20 @@ for _,p in pairs(Players:GetPlayers()) do if p~=lp then createESP(p) end end
 Players.PlayerAdded:Connect(function(p) if p~=lp then createESP(p) end end)
 Players.PlayerRemoving:Connect(removeESP)
 mkToggle(pESP,"Player ESP","Box, Name, Health, Distance",2,function(v) espEnabled=v end)
-mkSlider(pESP,"Maximum Distance",10,500,150,3,function(v) espMaxDist=v end)
-RS.RenderStepped:Connect(function()
-    if not espEnabled then for _,drawings in pairs(espCache) do for _,o in pairs(drawings) do pcall(function() o.Visible=false end) end end; return end
-    local now=tick(); if now-lastEspUpdate<0.15 then return end; lastEspUpdate=now
+mkSlider(pESP, "Maximum Distance", 10, 1000, 600, 3, function(v) espMaxDist = v end)
+local espUpdateCooldown = 0
+RS.RenderStepped:Connect(function(dt)
+    if not espEnabled then 
+        for _,drawings in pairs(espCache) do 
+            for _,o in pairs(drawings) do 
+                pcall(function() o.Visible=false end) 
+            end 
+        end 
+        return 
+    end
+    
+    espUpdateCooldown = espUpdateCooldown + dt
+    if espUpdateCooldown < 0.2 then return end  -- Update 5 FPS aja
     local myChar=lp.Character; local myHRP=myChar and myChar:FindFirstChild("HumanoidRootPart"); local myPos=myHRP and myHRP.Position
     local vX,vY=Camera.ViewportSize.X,Camera.ViewportSize.Y
     for player,drawings in pairs(espCache) do
@@ -1238,126 +1751,42 @@ RS.RenderStepped:Connect(function()
 end)
 
 -- ================================================================
--- PAGE 5 — OPTI (ORIGINAL)
--- ================================================================
-local pOpti = tabPages[5]
-mkAlertCard(pOpti, C.GREEN, "SAFE", "Fitur optimasi grafis untuk meningkatkan FPS.", 0)
-local fpsState={lowShadow=false,noPost=false,flatMat=false,noColor=false,hideDecals=false,flatWater=false,lowRender=false,highBright=false,lowAnim=false}
-local origLighting={fogEnd=Lighting.FogEnd,brightness=Lighting.Brightness,globalShadows=Lighting.GlobalShadows,postEffects={}}
-for _,v in ipairs(Lighting:GetChildren()) do if v:IsA("PostEffect") then table.insert(origLighting.postEffects,v:Clone()) end end
-local origParts,origDecals,origTerrain={},{},{}
-local function applyLowShadow(e) Lighting.GlobalShadows=not e end
-local function applyNoPost(e)
-    if e then for _,v in ipairs(Lighting:GetChildren()) do if v:IsA("PostEffect") then v:Destroy() end end; Lighting.FogEnd=9e9
-    else Lighting.FogEnd=origLighting.fogEnd; for _,v in ipairs(origLighting.postEffects) do v:Clone().Parent=Lighting end end
-end
-local function applyFlatMat(e)
-    for _,inst in ipairs(workspace:GetDescendants()) do
-        if inst:IsA("BasePart") and not (lp.Character and inst:IsDescendantOf(lp.Character)) then
-            if e then if not origParts[inst] then origParts[inst]={Material=inst.Material,Reflectance=inst.Reflectance,Color=inst.Color} end
-                inst.Material=Enum.Material.SmoothPlastic; inst.Reflectance=0
-                if fpsState.noColor then inst.Color=Color3.fromRGB(120,120,120) end
-            else local orig=origParts[inst]; if orig then inst.Material=orig.Material; inst.Reflectance=orig.Reflectance; inst.Color=orig.Color end end
-        end
-    end
-end
-local function applyNoColor(e)
-    if not fpsState.flatMat then
-        for _,inst in ipairs(workspace:GetDescendants()) do
-            if inst:IsA("BasePart") and not (lp.Character and inst:IsDescendantOf(lp.Character)) then
-                if e then
-                    if not origParts[inst] then origParts[inst]={Material=inst.Material,Reflectance=inst.Reflectance,Color=inst.Color} end
-                    inst.Color=Color3.fromRGB(120,120,120)
-                else local orig=origParts[inst]; if orig then inst.Color=orig.Color end end
-            end
-        end
-    elseif e then
-        for _,inst in ipairs(workspace:GetDescendants()) do
-            if inst:IsA("BasePart") and not (lp.Character and inst:IsDescendantOf(lp.Character)) then
-                inst.Color=Color3.fromRGB(120,120,120)
-            end
-        end
-    else applyFlatMat(true) end
-end
-local function applyHideDecals(e)
-    for _,inst in ipairs(workspace:GetDescendants()) do
-        if inst:IsA("Decal") then
-            if e then if not origDecals[inst] then origDecals[inst]=inst.Transparency end; inst.Transparency=1
-            else if origDecals[inst] then inst.Transparency=origDecals[inst] end end
-        end
-    end
-end
-local function applyFlatWater(e)
-    local terrain=workspace:FindFirstChild("Terrain")
-    if terrain then
-        if e then if not origTerrain[terrain] then origTerrain[terrain]=terrain.WaterReflectance end; terrain.WaterReflectance=0
-        else if origTerrain[terrain] then terrain.WaterReflectance=origTerrain[terrain] end end
-    end
-end
-local function applyLowRender(e)
-    if e then for _,v in ipairs(workspace:GetDescendants()) do if v:IsA("Part") or v:IsA("MeshPart") then v.Material=Enum.Material.SmoothPlastic end end
-    else for _,inst in pairs(origParts) do if inst:IsA("BasePart") then inst.Material=inst.Material end end end
-end
-local function applyHighBright(e) if e then Lighting.Brightness=3 else Lighting.Brightness=origLighting.brightness end end
-local function applyLowAnim(e) if e then RS:SetRuntime(0.5) else RS:SetRuntime(1) end end
-
-mkToggle(pOpti,"Low Shadow","Disable GlobalShadows",2,function(v) fpsState.lowShadow=v; applyLowShadow(v) end)
-mkToggle(pOpti,"No Post Effect","Disable Bloom & Fog",3,function(v) fpsState.noPost=v; applyNoPost(v) end)
-mkToggle(pOpti,"Flat Material","All plastic",4,function(v) fpsState.flatMat=v; applyFlatMat(v) end)
-mkToggle(pOpti,"No Color","Grayscale world (combine with flat material)",5,function(v) fpsState.noColor=v; applyNoColor(v) end)
-mkToggle(pOpti,"Hide Decals","Hapus semua decal",6,function(v) fpsState.hideDecals=v; applyHideDecals(v) end)
-mkToggle(pOpti,"Flat Water","Hilangkan efek air",7,function(v) fpsState.flatWater=v; applyFlatWater(v) end)
-mkToggle(pOpti,"Low Render","Turunkan kualitas render",8,function(v) fpsState.lowRender=v; applyLowRender(v) end)
-mkToggle(pOpti,"High Bright","Tingkatkan brightness",9,function(v) fpsState.highBright=v; applyHighBright(v) end)
-mkToggle(pOpti,"Low Anim","Turunkan kecepatan animasi",10,function(v) fpsState.lowAnim=v; applyLowAnim(v) end)
-
--- ================================================================
--- PAGE 6 — CREDIT (ORIGINAL)
+-- PAGE 5 — CREDIT (ORIGINAL)
 -- ================================================================
 local pCredit = tabPages[6]
-local devCard = mkCard(pCredit, 70, 1)
+
+local devCard = mkCard(pCredit, 80, 1)
+
 local devTitle = Instance.new("TextLabel", devCard)
-devTitle.Size = UDim2.new(1, -16, 0, 22); devTitle.Position = UDim2.new(0, 8, 0, 8); devTitle.BackgroundTransparency = 1
-devTitle.Text = "SILENT HUB  v1.0"; devTitle.Font = Enum.Font.GothamBlack; devTitle.TextSize = 14; devTitle.TextColor3 = C.TEXT
-devTitle.TextXAlignment = Enum.TextXAlignment.Left; devTitle.ZIndex = 5
+devTitle.Size = UDim2.new(1, -16, 0, 22)
+devTitle.Position = UDim2.new(0, 8, 0, 8)
+devTitle.BackgroundTransparency = 1
+devTitle.Text = "SILENT HUB v1.0"
+devTitle.Font = Enum.Font.GothamBlack
+devTitle.TextSize = 14
+devTitle.TextColor3 = C.TEXT
+devTitle.TextXAlignment = Enum.TextXAlignment.Left
+
 local devSub = Instance.new("TextLabel", devCard)
-devSub.Size = UDim2.new(1, -16, 0, 14); devSub.Position = UDim2.new(0, 8, 0, 32); devSub.BackgroundTransparency = 1
-devSub.Text = "Developed by  MASGAL × DRKY"; devSub.Font = Enum.Font.GothamBold; devSub.TextSize = 10
-devSub.TextColor3 = C.ACCB; devSub.TextXAlignment = Enum.TextXAlignment.Left; devSub.ZIndex = 5
+devSub.Size = UDim2.new(1, -16, 0, 14)
+devSub.Position = UDim2.new(0, 8, 0, 32)
+devSub.BackgroundTransparency = 1
+devSub.Text = "Developed by MASGAL x DRKY"
+devSub.Font = Enum.Font.GothamBold
+devSub.TextSize = 10
+devSub.TextColor3 = C.ACCB
+devSub.TextXAlignment = Enum.TextXAlignment.Left
+
 local teamL = Instance.new("TextLabel", devCard)
-teamL.Size = UDim2.new(1, -16, 0, 12); teamL.Position = UDim2.new(0, 8, 0, 48); teamL.BackgroundTransparency = 1
-teamL.Text = "Team  ·  SILENT TEAM"; teamL.Font = Enum.Font.Gotham; teamL.TextSize = 9; teamL.TextColor3 = C.TEXTM
-teamL.TextXAlignment = Enum.TextXAlignment.Left; teamL.ZIndex = 5
+teamL.Size = UDim2.new(1, -16, 0, 12)
+teamL.Position = UDim2.new(0, 8, 0, 48)
+teamL.BackgroundTransparency = 1
+teamL.Text = "Team: SILENT TEAM"
+teamL.Font = Enum.Font.Gotham
+teamL.TextSize = 9
+teamL.TextColor3 = C.TEXTM
+teamL.TextXAlignment = Enum.TextXAlignment.Left
 
-local gLine = Instance.new("Frame", devCard)
-gLine.Size = UDim2.new(0, 40, 0, 2); gLine.AnchorPoint = Vector2.new(0, 0); gLine.Position = UDim2.new(0, 8, 1, -3)
-gLine.BackgroundColor3 = C.ACCB; gLine.BorderSizePixel = 0; gLine.ZIndex = 5; Instance.new("UICorner", gLine).CornerRadius = UDim.new(0.5, 0)
-task.spawn(function()
-    while devCard and devCard.Parent do
-        tw(gLine, {Size = UDim2.new(0, 100, 0, 2)}, 1, Enum.EasingStyle.Sine); task.wait(1)
-        tw(gLine, {Size = UDim2.new(0, 40, 0, 2)}, 1, Enum.EasingStyle.Sine); task.wait(1)
-    end
-end)
-
-mkSection(pCredit, "Pricing", 2)
-local function mkPriceCard(page, name, price, dur, order, acol)
-    local f = mkCard(page, 58, order)
-    local bar = Instance.new("Frame", f); bar.Size = UDim2.new(0, 3, 0.6, 0); bar.Position = UDim2.new(0, 0, 0.2, 0)
-    bar.BackgroundColor3 = acol or C.ACCB; bar.BorderSizePixel = 0; Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 2)
-    local nl = Instance.new("TextLabel", f); nl.Position = UDim2.new(0, 14, 0, 8); nl.Size = UDim2.new(0.55, 0, 0, 18)
-    nl.BackgroundTransparency = 1; nl.Text = name; nl.Font = Enum.Font.GothamBold; nl.TextSize = 11; nl.TextColor3 = C.TEXT
-    nl.TextXAlignment = Enum.TextXAlignment.Left; nl.ZIndex = 5
-    local pl = Instance.new("TextLabel", f); pl.Position = UDim2.new(0, 14, 0, 28); pl.Size = UDim2.new(0.55, 0, 0, 14)
-    pl.BackgroundTransparency = 1; pl.Text = price; pl.Font = Enum.Font.Gotham; pl.TextSize = 9; pl.TextColor3 = C.TEXTM
-    pl.TextXAlignment = Enum.TextXAlignment.Left; pl.ZIndex = 5
-    local db = Instance.new("Frame", f); db.Size = UDim2.new(0, 70, 0, 22); db.Position = UDim2.new(1, -80, 0.5, -11)
-    db.BackgroundColor3 = C.SURF3; db.BorderSizePixel = 0; db.ZIndex = 5; Instance.new("UICorner", db).CornerRadius = UDim.new(0, 6)
-    local dbs = Instance.new("UIStroke", db); dbs.Color = acol or C.BORDER; dbs.Thickness = 1
-    local dl = Instance.new("TextLabel", db); dl.Size = UDim2.new(1, 0, 1, 0); dl.BackgroundTransparency = 1
-    dl.Text = dur; dl.Font = Enum.Font.GothamBold; dl.TextSize = 9; dl.TextColor3 = acol or C.ACCB
-    dl.TextXAlignment = Enum.TextXAlignment.Center; dl.ZIndex = 6
-end
-mkPriceCard(pCredit, "Silent Hub", "IDR 20.000  /  USD $1.20", "3 Days", 3, C.ACCB)
 
 mkSection(pCredit, "Links", 4)
 mkBtn(pCredit, "📋  Copy Discord Link", 5, C.DISCORD, function()
@@ -1389,6 +1818,7 @@ for i = 1, 2 do RS.RenderStepped:Wait() end
 task.wait(0.05)
 switchTab(2)
 
+
+
 print("✅ Silent Hub Improved: Silent Aim Range Unlimited + Wallbang + Dual Method")
-print("📌 Pilih method: CastBlacklist / FindPartOnRay / Both")
 print("🎯 Jarak tidak terbatas (unlimited range)")
