@@ -1,6 +1,4 @@
 -- SILENT HUB v1.0 — PREMIUM DARK EDITION (FINAL UPDATE)
--- Improved: Silent Aim Range Unlimited, Wallbang, Dual Method (CastBlacklist + FindPartOnRay)
--- ALL ORIGINAL FEATURES KEPT (Noclip, Aimbot, Vehicle Fly, Teleport, ESP, Opti, Credit)
 -- Dev: MASGAL x DRKY | Team: SILENT TEAM
 
 -- ================================================================
@@ -8,7 +6,7 @@
 -- ================================================================
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local lp = game.Players.LocalPlayer
-local Bypass = { Hooks = {}, Stealth = {}, Patterns = {}, KillFakeHandshake = {}  }
+local Bypass = { Hooks = {}, Stealth = {}, Patterns = {}, KillFakeHandshake = {} }
 local function killFakeHandshake()
     local fake = MemoryStoreService:FindFirstChild("Hyphon_Check")
     if fake and fake:IsA("RemoteEvent") then pcall(function() fake:Destroy() end) end
@@ -33,10 +31,6 @@ Bypass.Stealth = {
         local mt = getmetatable(game)
         if mt and mt.__index then mt.__index = newcclosure(function(self,k) if k=="Players" or k=="Workspace" then return rawget(self,k) end; return mt.__index(self,k) end) end
     end,
-    Drawing = function()
-        local mt = getmetatable(Drawing)
-        if mt and mt.__index then mt.__index = newcclosure(function(self,k) if k=="new" or k=="Create" then return function(...) local obj=mt.__index(self,k)(...); obj.Visible=false; return obj end end; return mt.__index(self,k) end) end
-    end,
     Terrain = function()
         local terrain = workspace:FindFirstChild("Terrain")
         if terrain then local mt=getmetatable(terrain); if mt and mt.__index then mt.__index=newcclosure(function(self,k) if k=="WaterWaveSize" or k=="WaterWaveSpeed" then return function() return 0 end end; return mt.__index(self,k) end) end end
@@ -56,7 +50,6 @@ Bypass.Executor = function()
     while true do
         pcall(Bypass.Hooks.Environment)
         pcall(Bypass.Stealth.Memory)
-        pcall(Bypass.Stealth.Drawing)
         pcall(Bypass.Patterns.Randomize)
         pcall(Bypass.Patterns.Obfuscate)
         pcall(Bypass.Hooks.LightBypass)
@@ -145,6 +138,44 @@ pcall(function()
     end
 end)
 
+-- ========== LAYER 8: GETREG (HIDE TABLES) ==========
+pcall(function()
+    for i, v in next, getreg() do
+if type(v) == "thread" then
+if string.find(debug.traceback(v), "<", 1, true) then
+coroutine.close(v)
+end
+end
+end
+end)
+
+-- ========= LAYER 9: PROTECT GETGC (HIDE FUNCTIONS) ==========
+pcall(function()
+    local oldGetGC = getgc
+    getgc = function(...)
+        local result = oldGetGC(...)
+        local filtered = {}
+        for i, v in next, result do
+            if type(v) == "function" then
+                local info = debug.getinfo(v)
+                if info and info.what ~= "C" then
+                    table.insert(filtered, v)
+                end
+            end
+        end
+        return filtered
+    end
+end)
+
+-- ========= Getthread ================ ---
+pcall(function()
+    for i,v in next, getallthreads() do
+local s = getscriptfromthread(v)
+if string.find(tostring(s), "<", 1, true) then
+coroutine.close(v)
+end
+end end)
+
 -- ================================================================
 -- ========== BYPASS DARI URL (METAMETHOD, HANDSHAKE, DLL) ==========
 -- ================================================================
@@ -170,7 +201,6 @@ local function bypassMetaMethods()
     end
     if setreadonly then setreadonly(getrenv(), false) end
     if make_writeable then make_writeable(getreg()) end
-    print("[BYPASS] Metamethod Bypass - Found: " .. #foundChecks .. " checks")
 end
 
 local function bypassHandshakes()
@@ -189,7 +219,6 @@ local function bypassHandshakes()
             end
         end
     end
-    print("[BYPASS] Handshake Bypass - Bypassed: " .. bypassed .. " remotes")
 end
 
 local function bypassHookChecks()
@@ -204,7 +233,6 @@ local function bypassHookChecks()
             hooksBypassed = hooksBypassed + 1
         end
     end
-    print("[BYPASS] Hook Check Bypass - Bypassed: " .. hooksBypassed .. " hooks")
 end
 
 local function bypassDetours()
@@ -227,7 +255,6 @@ local function bypassDetours()
             end
         end
     end
-    print("[BYPASS] Detour Bypass - Restored: " .. detoursBypassed .. " functions")
 end
 
 local function bypassMemoryChecks()
@@ -246,7 +273,6 @@ local function bypassMemoryChecks()
             end
         end
     end
-    print("[BYPASS] Memory Bypass - Applied: " .. memoryPatches .. " patches")
 end
 
 local function bypassVMChecks()
@@ -260,7 +286,6 @@ local function bypassVMChecks()
         getcallingscript = function() return nil end
         vmBypasses = vmBypasses + 1
     end
-    print("[BYPASS] VM Check Bypass - Applied: " .. vmBypasses .. " bypasses")
 end
 
 local function bypassSignatures()
@@ -278,7 +303,6 @@ local function bypassSignatures()
             end
         end
     end
-    print("[BYPASS] Signature Bypass - Cleared: " .. signaturesBypassed .. " signatures")
 end
 
 local function bypassIntegrityChecks()
@@ -303,7 +327,6 @@ local function bypassIntegrityChecks()
             integrityBypasses = integrityBypasses + 1
         end
     end
-    print("[BYPASS] Integrity Bypass - Applied: " .. integrityBypasses .. " bypasses")
 end
 
 -- ========== PANGGIL SEMUA BYPASS ==========
@@ -317,8 +340,54 @@ spawn(function()
     pcall(bypassVMChecks)
     pcall(bypassSignatures)
     pcall(bypassIntegrityChecks)
-    print("[XYLUS] All URL bypass functions executed!")
 end)
+
+pcall(function()
+    local mt = getrawmetatable(game)
+    if mt then
+        setreadonly(mt, false)
+        local old_nc = mt.__namecall
+        mt.__namecall = function(self, ...)
+            local method = getnamecallmethod()
+            if method == "FireServer" then
+                local str = tostring(self)
+                if str:find("Anti") or str:find("Detect") or str:find("Check") or str:find("Report") then
+                    return nil
+                end
+            end
+            if method == "Kick" or method == "Ban" then
+                return nil
+            end
+            return old_nc(self, ...)
+        end
+        setreadonly(mt, true)
+    end
+
+    local forbid = {"getexecutorname", "identifyexecutor", "checkexecutor", "is_synapse", "is_krnl"}
+    for _, f in ipairs(forbid) do
+        if _G[f] then _G[f] = function() return "Unknown" end end
+    end
+
+    pcall(function() game:GetService("LogService"):SetLogLevel(Enum.LogLevel.None) end)
+end)
+
+-- ================================================================
+-- REMOVE HEX-NAMED REMOTEFUNCTIONS FROM REPLICATEDSTORAGE
+-- ================================================================
+task.wait(2) -- wait for game to fully load before removing
+
+for _, v in ipairs(game.ReplicatedStorage:GetChildren()) do
+    if string.match(v.Name, "^[0-9a-fA-F]+$") then
+        for _, child in ipairs(v:GetChildren()) do
+            if child:IsA("RemoteFunction") then
+                child.Parent = nil
+                print("Removed RemoteFunction:", child.Name, "from", v.Name)
+            end
+        end
+    end
+end
+
+print("bypass loaded")
 
 
 -- ========== CLEANUP ==========
