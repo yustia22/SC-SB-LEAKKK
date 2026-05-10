@@ -1603,7 +1603,7 @@ end)   -- <-- HARUSNYA end DOANG, TANPA KURUNG
 local clearBtn = mkBtn(pPlayer, "Clear All Excluded", 25, C.YELLOW, function()
     _G.ExcludedPlayers = {}
     excludedListLabel.Text = "🚫 Excluded: None"
-        end
+        end) 
 
 -- Update player list otomatis
 local function updatePlayerDropdown()
