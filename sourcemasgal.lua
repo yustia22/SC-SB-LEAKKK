@@ -1300,10 +1300,10 @@ task.spawn(function()
                     return workspace:Raycast(origin, direction, params)
                 end)
                 hooked = true
-        end)
+        end
         task.wait(1)
-    end
-end)
+    end)
+end
 
 -- ========== UI ==========
 mkToggle(pPlayer, "Silent Aim", "Auto-aim ke target dalam FOV", 2, function(v) SilentAim = v end)
