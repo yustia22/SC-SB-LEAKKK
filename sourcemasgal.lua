@@ -943,36 +943,40 @@ end)
 
 local staminaHooked = false
 local heartbeatConnection = nil
-mkToggle(pMain,"Infinite Stamina","Stamina tidak pernah habis",4,function(v)
+mkToggle(pMain, "Infinite Stamina", "Stamina tidak pernah habis", 4, function(Value)
     if Value and not staminaHooked then
-            for _, v in pairs(getgc(true)) do
-                if type(v) == "table" then
-                    for k, _ in pairs(v) do
-                        if k == "Stamina" then
-                            local mt = getmetatable(v)
-                            if mt then
-                                setreadonly(mt, false)
-                                local oldIndex = mt.__index
-                                mt.__index = function(t, k2)
-                                    if k2 == "Stamina" then return 100 end
-                                    return oldIndex and oldIndex(t, k2)
-                                end
-                                staminaHooked = true
-                            end
-                            heartbeatConnection = RunService.Heartbeat:Connect(function()
-                                if Value then v.Stamina = 100 end
-                            end)
-                            break
-                        end
-                    end
-                end
-                if staminaHooked then break end
+        staminaHooked = true
+        -- Ambil module stamina dari PlayerScripts.Main
+        local staminaReq = nil
+        pcall(function()
+            staminaReq = require(player.PlayerScripts:WaitForChild("Main", 5))
+        end)
+        -- Loop Heartbeat untuk set stamina = 100
+        heartbeatConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            if Value then
+                if staminaReq then staminaReq.Stamina = 100 end
+                -- Jika game pakai attribute stamina
+                pcall(function() player:SetAttribute("Stamina", 100) end)
             end
-        elseif not Value and heartbeatConnection then
-            heartbeatConnection:Disconnect()
-            heartbeatConnection = nil
+        end)
+        -- Sembunyikan stamina bar (opsional)
+        local mainGui = player.PlayerGui:FindFirstChild("Main")
+        if mainGui and mainGui:FindFirstChild("Bars") then
+            local bar = mainGui.Bars:FindFirstChild("StaminaBar")
+            if bar then bar.Visible = false end
         end
-    end)
+    elseif not Value and heartbeatConnection then
+        heartbeatConnection:Disconnect()
+        heartbeatConnection = nil
+        staminaHooked = false
+        -- Tampilkan kembali stamina bar
+        local mainGui = player.PlayerGui:FindFirstChild("Main")
+        if mainGui and mainGui:FindFirstChild("Bars") then
+            local bar = mainGui.Bars:FindFirstChild("StaminaBar")
+            if bar then bar.Visible = true end
+        end
+    end
+end)
 
 mkSection(pMain,"Identity",5)
 local _,nameBox=mkTextbox(pMain,"Change Name","Enter display name...",6,function(text)
@@ -1296,8 +1300,6 @@ task.spawn(function()
                     return workspace:Raycast(origin, direction, params)
                 end)
                 hooked = true
-                print("✅ SILENT AIM + EXCLUDE READY")
-            end
         end)
         task.wait(1)
     end
@@ -1393,8 +1395,7 @@ local function startInstantInteract()
             patchPrompt(obj)
         end
     end)
-    print("✅ Instant Interact ON")
-end
+    end
 
 local function stopInstantInteract()
     instantInteractEnabled = false
@@ -1402,8 +1403,7 @@ local function stopInstantInteract()
         instantInteractConnection:Disconnect()
         instantInteractConnection = nil
     end
-    print("❌ Instant Interact OFF")
-end
+    end
 
 local instantToggle, setInstantToggle = mkToggle(pPlayer, "Instant Interact", "Interact NPC tanpa nahan tombol", 11, function(v)
     if v then
@@ -1526,8 +1526,7 @@ end)
 mkSection(pPlayer, "Excluded Players", 20)
 
 _G.ExcludedPlayers = {}
-
--- Refresh list player buat dropdown
+--- Refresh list player buat dropdown
 local function RefreshPlayerList()
     local players = {}
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -1568,7 +1567,6 @@ local excludeBtn = mkBtn(pPlayer, "Exclude Selected Player", 23, C.RED, function
         end
         if not alreadyExcluded then
             table.insert(ExcludedPlayers, selectedPlayer)
-            print("✅ Excluded:", selectedPlayer)
             local excludedText = ""
             for i = 1, #ExcludedPlayers do
                 if excludedText ~= "" then
@@ -1587,7 +1585,6 @@ local unexcludeBtn = mkBtn(pPlayer, "Unexclude Selected Player", 24, C.GREY2, fu
         for i = 1, #ExcludedPlayers do
             if ExcludedPlayers[i] == selectedPlayer then
                 table.remove(ExcludedPlayers, i)
-                print("✅ Unexcluded:", selectedPlayer)
                 break
             end
         end
@@ -1606,8 +1603,7 @@ end)   -- <-- HARUSNYA end DOANG, TANPA KURUNG
 local clearBtn = mkBtn(pPlayer, "Clear All Excluded", 25, C.YELLOW, function()
     _G.ExcludedPlayers = {}
     excludedListLabel.Text = "🚫 Excluded: None"
-    print("✅ All excluded cleared")
-end)
+        end
 
 -- Update player list otomatis
 local function updatePlayerDropdown()
@@ -1650,7 +1646,7 @@ local motorStk = Instance.new("UIStroke", motorModeBtn); motorStk.Color = C.BORD
 
 local InstantModeBtn = Instance.new("TextButton", modeContainer)
 InstantModeBtn.Size = UDim2.new(0, 78, 1, 0); InstantModeBtn.Position = UDim2.new(1, -78, 0, 0)
-InstantModeBtn.BackgroundColor3 = C.SURF2; InstantModeBtn.Text = "RESPAWN"; InstantModeBtn.Font = Enum.Font.GothamBold
+InstantModeBtn.BackgroundColor3 = C.SURF2; InstantModeBtn.Text = "INSTANT"; InstantModeBtn.Font = Enum.Font.GothamBold
 InstantModeBtn.TextSize = 10; InstantModeBtn.BorderSizePixel = 0; Instance.new("UICorner", InstantModeBtn).CornerRadius = UDim.new(0, 6)
 local InstantStk = Instance.new("UIStroke", respawnModeBtn); respawnStk.Color = C.BORDERL
 
@@ -1658,7 +1654,7 @@ local function setModeActive(which)
     if which == "motor" then
         useRespawnMode = false
         motorModeBtn.BackgroundColor3 = C.WHITE; motorModeBtn.TextColor3 = C.BG; motorStk.Color = C.GREY2
-        respawnModeBtn.BackgroundColor3 = C.GREY2; respawnModeBtn.TextColor3 = C.WHITE; respawnStk.Color = C.BORDERL
+        InstantModeBtn.BackgroundColor3 = C.GREY2; InstantModeBtn.TextColor3 = C.WHITE; InstantStk.Color = C.BORDERL
     else
         useInstantMode = true
         InstantModeBtn.BackgroundColor3 = C.WHITE; InstantModeBtn.TextColor3 = C.BG; InstantStk.Color = C.GREY2
@@ -1666,7 +1662,7 @@ local function setModeActive(which)
     end
 end
 motorModeBtn.MouseButton1Click:Connect(function() setModeActive("motor") end)
-respawnModeBtn.MouseButton1Click:Connect(function() setModeActive("respawn") end)
+InstantModeBtn.MouseButton1Click:Connect(function() setModeActive("instant") end)
 setModeActive("motor")
 
 -- motor
@@ -1683,29 +1679,37 @@ end
 if lp.Character then hookChar(lp.Character) end
 lp.CharacterAdded:Connect(hookChar)
 
--- instant
-local pendingVoidDest = nil   -- untuk void method
-local function onCharAdded(char)
-    if not tpDestination then return end
-    task.spawn(function()
-        local hrp = char:WaitForChild("HumanoidRootPart", 10); local hum = char:WaitForChild("Humanoid", 10)
-        if hrp and hum then
-            repeat task.wait(0.1) until hum.Health > 0
-            task.wait(0.3)
-            pcall(function() hrp.CFrame = CFrame.new(tpDestination.x, tpDestination.y + 3, tpDestination.z) end)
-        end
-        tpDestination = nil; isRespawning = false
-    end)
+-- VOID INSTANT TELEPORT
+local pendingVoidDest = nil
+
+local function teleportToVoid(dest)
+    if pendingVoidDest then return end
+    local char = lp.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    pendingVoidDest = dest
+    hrp.CFrame = CFrame.new(999999, 999999, 999999)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.Health = 0 end
 end
-if lp.Character then onCharAdded(lp.Character) end
-lp.CharacterAdded:Connect(onCharAdded)
+
+lp.CharacterAdded:Connect(function(newChar)
+    if pendingVoidDest then
+        task.wait(0.6)
+        local hrp = newChar:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = CFrame.new(pendingVoidDest.X, pendingVoidDest.Y + 3, pendingVoidDest.Z)
+        end
+        pendingVoidDest = nil
+    end
+end)
 
 local function teleportTo(pos)
-    if useRespawnMode then
-        if isRespawning then return end
+    if useInstangMode then
+        if isInstant then return end
         local hum = lp.Character and lp.Character:FindFirstChild("Humanoid")
-        tpDestination = {x = pos.X, y = pos.Y, z = pos.Z}; isRespawning = true
-        if hum and hum.Health > 0 then hum.Health = 0 end
+        tpDestination = {x = pos.X, y = pos.Y, z = pos.Z}; isInstant = true
     else
         if not cachedSeat then return end
         local vm = cachedSeat:FindFirstAncestorWhichIsA("Model")
@@ -1889,7 +1893,4 @@ for i = 1, 2 do RS.RenderStepped:Wait() end
 task.wait(0.05)
 switchTab(2)
 
-
-
-print("✅ Silent Hub Improved: Silent Aim Range Unlimited + Wallbang + Dual Method")
-print("🎯 Jarak tidak terbatas (unlimited range)")
+print("xylent hub ready to use") 
