@@ -1264,6 +1264,7 @@ task.spawn(function()
                     end
                 end
             end
+        end)
             
             if CastBL then
                 hookfunction(CastBL, function(origin, direction, blacklist)
@@ -1302,9 +1303,8 @@ task.spawn(function()
                 hooked = true
         end
         task.wait(1)
-    end)
-end
-
+    end
+end)
 -- ========== UI ==========
 mkToggle(pPlayer, "Silent Aim", "Auto-aim ke target dalam FOV", 2, function(v) SilentAim = v end)
 mkSlider(pPlayer, "FOV Radius", 50, 500, 250, 3, function(v) FovSize = v; FovCircle.Radius = v end)
@@ -1490,7 +1490,7 @@ local function updateFly(dt)
             primary.RotVelocity = Vector3.new(0,0,0)
         end
     end
-end
+    end
 local function startFly() if flyConnection then flyConnection:Disconnect() end; flyConnection = RS.RenderStepped:Connect(updateFly) end
 local function stopFly() if flyConnection then flyConnection:Disconnect(); flyConnection = nil end end
 local flyToggle, setFlyToggle = mkToggle(pPlayer, "Vehicle Fly", "Kendaraan terbang dengan kontrol W A S D E Q (ikuti kamera)", 15, function(v)
@@ -1718,7 +1718,6 @@ local function teleportToVoid(dest)
     pendingVoidDest = dest
     hrp.CFrame = CFrame.new(999999, 999999, 999999)
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then hum.Health = 0 end
 end
 
 lp.CharacterAdded:Connect(function(newChar)
@@ -1727,7 +1726,6 @@ lp.CharacterAdded:Connect(function(newChar)
         local hrp = newChar:FindFirstChild("HumanoidRootPart")
         if hrp then
             hrp.CFrame = CFrame.new(pendingVoidDest.X, pendingVoidDest.Y + 3, pendingVoidDest.Z)
-            print("[VOID TP] Teleported to", pendingVoidDest.X, pendingVoidDest.Y, pendingVoidDest.Z)
         end
         pendingVoidDest = nil
         isTeleporting = false
