@@ -1648,11 +1648,11 @@ motorModeBtn.BackgroundColor3 = C.BLUE; motorModeBtn.Text = "MOTOR"; motorModeBt
 motorModeBtn.TextSize = 10; motorModeBtn.BorderSizePixel = 0; Instance.new("UICorner", motorModeBtn).CornerRadius = UDim.new(0, 6)
 local motorStk = Instance.new("UIStroke", motorModeBtn); motorStk.Color = C.BORDERL
 
-local respawnModeBtn = Instance.new("TextButton", modeContainer)
-respawnModeBtn.Size = UDim2.new(0, 78, 1, 0); respawnModeBtn.Position = UDim2.new(1, -78, 0, 0)
-respawnModeBtn.BackgroundColor3 = C.SURF2; respawnModeBtn.Text = "RESPAWN"; respawnModeBtn.Font = Enum.Font.GothamBold
-respawnModeBtn.TextSize = 10; respawnModeBtn.BorderSizePixel = 0; Instance.new("UICorner", respawnModeBtn).CornerRadius = UDim.new(0, 6)
-local respawnStk = Instance.new("UIStroke", respawnModeBtn); respawnStk.Color = C.BORDERL
+local InstantModeBtn = Instance.new("TextButton", modeContainer)
+InstantModeBtn.Size = UDim2.new(0, 78, 1, 0); InstantModeBtn.Position = UDim2.new(1, -78, 0, 0)
+InstantModeBtn.BackgroundColor3 = C.SURF2; InstantModeBtn.Text = "RESPAWN"; InstantModeBtn.Font = Enum.Font.GothamBold
+InstantModeBtn.TextSize = 10; InstantModeBtn.BorderSizePixel = 0; Instance.new("UICorner", InstantModeBtn).CornerRadius = UDim.new(0, 6)
+local InstantStk = Instance.new("UIStroke", respawnModeBtn); respawnStk.Color = C.BORDERL
 
 local function setModeActive(which)
     if which == "motor" then
@@ -1660,8 +1660,8 @@ local function setModeActive(which)
         motorModeBtn.BackgroundColor3 = C.WHITE; motorModeBtn.TextColor3 = C.BG; motorStk.Color = C.GREY2
         respawnModeBtn.BackgroundColor3 = C.GREY2; respawnModeBtn.TextColor3 = C.WHITE; respawnStk.Color = C.BORDERL
     else
-        useRespawnMode = true
-        respawnModeBtn.BackgroundColor3 = C.WHITE; respawnModeBtn.TextColor3 = C.BG; respawnStk.Color = C.GREY2
+        useInstantMode = true
+        InstantModeBtn.BackgroundColor3 = C.WHITE; InstantModeBtn.TextColor3 = C.BG; InstantStk.Color = C.GREY2
         motorModeBtn.BackgroundColor3 = C.GREY2; motorModeBtn.TextColor3 = C.WHITE; motorStk.Color = C.BORDERL
     end
 end
@@ -1669,6 +1669,7 @@ motorModeBtn.MouseButton1Click:Connect(function() setModeActive("motor") end)
 respawnModeBtn.MouseButton1Click:Connect(function() setModeActive("respawn") end)
 setModeActive("motor")
 
+-- motor
 local cachedSeat = nil
 local function updateSeatCache()
     local hum = lp.Character and lp.Character:FindFirstChildOfClass("Humanoid")
@@ -1682,7 +1683,8 @@ end
 if lp.Character then hookChar(lp.Character) end
 lp.CharacterAdded:Connect(hookChar)
 
-local tpDestination = nil; local isRespawning = false
+-- instant
+local pendingVoidDest = nil   -- untuk void method
 local function onCharAdded(char)
     if not tpDestination then return end
     task.spawn(function()
