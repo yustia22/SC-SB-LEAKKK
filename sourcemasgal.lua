@@ -1627,45 +1627,73 @@ end)
 
 
 -- ================================================================
--- PAGE 3 — TELEPORT (ORIGINAL)
+-- PAGE 3 — TELEPORT (FIXED)
 -- ================================================================
 local pTeleport = tabPages[3]
 mkAlertCard(pTeleport, C.YELLOW, "WARNING MEDIUM !", "Pilih mode lalu lokasi.", 0)
 mkSection(pTeleport, "Teleport Mode", 1)
 
-local useRespawnMode = false
+local useInstantMode = false   -- true = instant (void), false = motor
+local isTeleporting = false
+local pendingVoidDest = nil
+
 local modeCard = mkCard(pTeleport, 40, 2)
 local modeContainer = Instance.new("Frame", modeCard)
-modeContainer.Size = UDim2.new(0, 160, 0, 28); modeContainer.Position = UDim2.new(0.5, -80, 0.5, -14); modeContainer.BackgroundTransparency = 1
+modeContainer.Size = UDim2.new(0, 160, 0, 28)
+modeContainer.Position = UDim2.new(0.5, -80, 0.5, -14)
+modeContainer.BackgroundTransparency = 1
 
+-- Tombol MOTOR
 local motorModeBtn = Instance.new("TextButton", modeContainer)
-motorModeBtn.Size = UDim2.new(0, 78, 1, 0); motorModeBtn.Position = UDim2.new(0, 0, 0, 0)
-motorModeBtn.BackgroundColor3 = C.BLUE; motorModeBtn.Text = "MOTOR"; motorModeBtn.Font = Enum.Font.GothamBold
-motorModeBtn.TextSize = 10; motorModeBtn.BorderSizePixel = 0; Instance.new("UICorner", motorModeBtn).CornerRadius = UDim.new(0, 6)
-local motorStk = Instance.new("UIStroke", motorModeBtn); motorStk.Color = C.BORDERL
+motorModeBtn.Size = UDim2.new(0, 78, 1, 0)
+motorModeBtn.Position = UDim2.new(0, 0, 0, 0)
+motorModeBtn.BackgroundColor3 = C.WHITE
+motorModeBtn.Text = "MOTOR"
+motorModeBtn.Font = Enum.Font.GothamBold
+motorModeBtn.TextSize = 10
+motorModeBtn.BorderSizePixel = 0
+Instance.new("UICorner", motorModeBtn).CornerRadius = UDim.new(0, 6)
+local motorStk = Instance.new("UIStroke", motorModeBtn)
+motorStk.Color = C.GREY2
 
-local InstantModeBtn = Instance.new("TextButton", modeContainer)
-InstantModeBtn.Size = UDim2.new(0, 78, 1, 0); InstantModeBtn.Position = UDim2.new(1, -78, 0, 0)
-InstantModeBtn.BackgroundColor3 = C.SURF2; InstantModeBtn.Text = "INSTANT"; InstantModeBtn.Font = Enum.Font.GothamBold
-InstantModeBtn.TextSize = 10; InstantModeBtn.BorderSizePixel = 0; Instance.new("UICorner", InstantModeBtn).CornerRadius = UDim.new(0, 6)
-local InstantStk = Instance.new("UIStroke", InstantModeBtn); InstantStk.Color = C.BORDERL
+-- Tombol INSTANT (VOID)
+local instantModeBtn = Instance.new("TextButton", modeContainer)
+instantModeBtn.Size = UDim2.new(0, 78, 1, 0)
+instantModeBtn.Position = UDim2.new(1, -78, 0, 0)
+instantModeBtn.BackgroundColor3 = C.GREY2
+instantModeBtn.Text = "INSTANT"
+instantModeBtn.Font = Enum.Font.GothamBold
+instantModeBtn.TextSize = 10
+instantModeBtn.BorderSizePixel = 0
+Instance.new("UICorner", instantModeBtn).CornerRadius = UDim.new(0, 6)
+local instantStk = Instance.new("UIStroke", instantModeBtn)
+instantStk.Color = C.BORDERL
 
-local function setModeActive(which)
-    if which == "motor" then
-        useRespawnMode = false
-        motorModeBtn.BackgroundColor3 = C.WHITE; motorModeBtn.TextColor3 = C.BG; motorStk.Color = C.GREY2
-        InstantModeBtn.BackgroundColor3 = C.GREY2; InstantModeBtn.TextColor3 = C.WHITE; InstantStk.Color = C.BORDERL
+-- Fungsi ganti mode
+local function setMode(instant)
+    useInstantMode = instant
+    if instant then
+        motorModeBtn.BackgroundColor3 = C.GREY2
+        motorModeBtn.TextColor3 = C.WHITE
+        motorStk.Color = C.BORDERL
+        instantModeBtn.BackgroundColor3 = C.WHITE
+        instantModeBtn.TextColor3 = C.BG
+        instantStk.Color = C.GREY2
     else
-        useInstantMode = true
-        InstantModeBtn.BackgroundColor3 = C.WHITE; InstantModeBtn.TextColor3 = C.BG; InstantStk.Color = C.GREY2
-        motorModeBtn.BackgroundColor3 = C.GREY2; motorModeBtn.TextColor3 = C.WHITE; motorStk.Color = C.BORDERL
+        motorModeBtn.BackgroundColor3 = C.WHITE
+        motorModeBtn.TextColor3 = C.BG
+        motorStk.Color = C.GREY2
+        instantModeBtn.BackgroundColor3 = C.GREY2
+        instantModeBtn.TextColor3 = C.WHITE
+        instantStk.Color = C.BORDERL
     end
 end
-motorModeBtn.MouseButton1Click:Connect(function() setModeActive("motor") end)
-InstantModeBtn.MouseButton1Click:Connect(function() setModeActive("instant") end)
-setModeActive("motor")
 
--- motor
+motorModeBtn.MouseButton1Click:Connect(function() setMode(false) end)
+instantModeBtn.MouseButton1Click:Connect(function() setMode(true) end)
+setMode(false)  -- default motor
+
+-- ========== MOTOR MODE (cached seat) ==========
 local cachedSeat = nil
 local function updateSeatCache()
     local hum = lp.Character and lp.Character:FindFirstChildOfClass("Humanoid")
@@ -1679,15 +1707,14 @@ end
 if lp.Character then hookChar(lp.Character) end
 lp.CharacterAdded:Connect(hookChar)
 
--- VOID INSTANT TELEPORT
-local pendingVoidDest = nil
-
+-- ========== INSTANT MODE (VOID) ==========
 local function teleportToVoid(dest)
-    if pendingVoidDest then return end
+    if isTeleporting then return end
     local char = lp.Character
     if not char then return end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
+    isTeleporting = true
     pendingVoidDest = dest
     hrp.CFrame = CFrame.new(999999, 999999, 999999)
     local hum = char:FindFirstChildOfClass("Humanoid")
@@ -1700,24 +1727,29 @@ lp.CharacterAdded:Connect(function(newChar)
         local hrp = newChar:FindFirstChild("HumanoidRootPart")
         if hrp then
             hrp.CFrame = CFrame.new(pendingVoidDest.X, pendingVoidDest.Y + 3, pendingVoidDest.Z)
+            print("[VOID TP] Teleported to", pendingVoidDest.X, pendingVoidDest.Y, pendingVoidDest.Z)
         end
         pendingVoidDest = nil
+        isTeleporting = false
     end
 end)
 
+-- ========== TELEPORT FUNCTION ==========
 local function teleportTo(pos)
-    if useInstangMode then
-        if isInstant then return end
-        local hum = lp.Character and lp.Character:FindFirstChild("Humanoid")
-        tpDestination = {x = pos.X, y = pos.Y, z = pos.Z}; isInstant = true
+    if useInstantMode then
+        teleportToVoid(pos)
     else
         if not cachedSeat then return end
         local vm = cachedSeat:FindFirstAncestorWhichIsA("Model")
-        if vm and vm.PrimaryPart then vm:SetPrimaryPartCFrame(CFrame.new(pos.X, pos.Y + 2, pos.Z))
-        elseif cachedSeat then cachedSeat.CFrame = CFrame.new(pos.X, pos.Y + 2, pos.Z) end
+        if vm and vm.PrimaryPart then
+            vm:SetPrimaryPartCFrame(CFrame.new(pos.X, pos.Y + 2, pos.Z))
+        elseif cachedSeat then
+            cachedSeat.CFrame = CFrame.new(pos.X, pos.Y + 2, pos.Z)
+        end
     end
 end
 
+-- ========== DAFTAR LOKASI ==========
 local LOCATIONS = {
     {"Dealer NPC",       Vector3.new(770.992,  3.71,   433.75)},
     {"NPC Marshmallow",  Vector3.new(510.061,  4.476,  600.548)},
@@ -1727,34 +1759,51 @@ local LOCATIONS = {
     {"Apart 4",          Vector3.new(988.311,  9.932,  221.664)},
     {"Apart 5",          Vector3.new(923.954,  9.932,  42.202)},
     {"Apart 6",          Vector3.new(895.721,  9.932,  41.928)},
-    {"Casino",           Vector3.new(1166.33,   3.36,   -29.77)},
-    {"GS UJUNG",         Vector3.new(-466.525,  3.862,  357.661)},
-    {"GS BINARY",        Vector3.new(-280.351,  3.742,  248.872)},
-    {"GS MID",           Vector3.new(218.427,   3.737,  -176.975)},
+    {"Casino",           Vector3.new(1166.33,  3.36,   -29.77)},
+    {"GS UJUNG",         Vector3.new(-466.525, 3.862,  357.661)},
+    {"GS BINARY",        Vector3.new(-280.351, 3.742,  248.872)},
+    {"GS MID",           Vector3.new(218.427,  3.737,  -176.975)},
 }
 
 mkSection(pTeleport, "Lokasi", 3)
 for i, loc in ipairs(LOCATIONS) do
     local row = mkCard(pTeleport, 36, 10 + i)
     local nameLbl = Instance.new("TextLabel", row)
-    nameLbl.Size = UDim2.new(0.6, 0, 1, 0); nameLbl.Position = UDim2.new(0, 10, 0, 0); nameLbl.BackgroundTransparency = 1
-    nameLbl.Text = loc[1]; nameLbl.Font = Enum.Font.Gotham; nameLbl.TextSize = 9; nameLbl.TextColor3 = C.TEXT
+    nameLbl.Size = UDim2.new(0.6, 0, 1, 0)
+    nameLbl.Position = UDim2.new(0, 10, 0, 0)
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.Text = loc[1]
+    nameLbl.Font = Enum.Font.Gotham
+    nameLbl.TextSize = 9
+    nameLbl.TextColor3 = C.TEXT
     nameLbl.TextXAlignment = Enum.TextXAlignment.Left
     local tpBtn = mkBtn(row, "Teleport", 0, C.GREY2, function() teleportTo(loc[2]) end)
-    tpBtn.Size = UDim2.new(0, 70, 0, 24); tpBtn.Position = UDim2.new(1, -80, 0.5, -12)
-    tpBtn.TextSize = 9; tpBtn.TextColor3 = C.TEXT
+    tpBtn.Size = UDim2.new(0, 70, 0, 24)
+    tpBtn.Position = UDim2.new(1, -80, 0.5, -12)
+    tpBtn.TextSize = 9
+    tpBtn.TextColor3 = C.TEXT
     local btnStk = tpBtn:FindFirstChildOfClass("UIStroke")
     if btnStk then btnStk.Color = C.BORDER end
 end
 
 local stCard = mkCard(pTeleport, 26, 10 + #LOCATIONS + 1)
 local stL = Instance.new("TextLabel", stCard)
-stL.Size = UDim2.new(1, -16, 1, 0); stL.Position = UDim2.new(0, 8, 0, 0); stL.BackgroundTransparency = 1
-stL.Text = "Not in vehicle"; stL.Font = Enum.Font.Gotham; stL.TextSize = 8; stL.TextColor3 = C.TEXTM
-stL.TextXAlignment = Enum.TextXAlignment.Left; stL.ZIndex = 5
+stL.Size = UDim2.new(1, -16, 1, 0)
+stL.Position = UDim2.new(0, 8, 0, 0)
+stL.BackgroundTransparency = 1
+stL.Text = "Not in vehicle"
+stL.Font = Enum.Font.Gotham
+stL.TextSize = 8
+stL.TextColor3 = C.TEXTM
+stL.TextXAlignment = Enum.TextXAlignment.Left
 RS.Heartbeat:Connect(function()
-    if cachedSeat then stL.Text = "In vehicle - Motor mode ready"; stL.TextColor3 = C.GREEN
-    else stL.Text = "Not in vehicle"; stL.TextColor3 = C.TEXTM end
+    if cachedSeat then
+        stL.Text = "In vehicle - Motor mode ready"
+        stL.TextColor3 = C.GREEN
+    else
+        stL.Text = "Not in vehicle"
+        stL.TextColor3 = C.TEXTM
+    end
 end)
 
 -- ================================================================
