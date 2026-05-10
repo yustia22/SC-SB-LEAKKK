@@ -1648,7 +1648,7 @@ local InstantModeBtn = Instance.new("TextButton", modeContainer)
 InstantModeBtn.Size = UDim2.new(0, 78, 1, 0); InstantModeBtn.Position = UDim2.new(1, -78, 0, 0)
 InstantModeBtn.BackgroundColor3 = C.SURF2; InstantModeBtn.Text = "INSTANT"; InstantModeBtn.Font = Enum.Font.GothamBold
 InstantModeBtn.TextSize = 10; InstantModeBtn.BorderSizePixel = 0; Instance.new("UICorner", InstantModeBtn).CornerRadius = UDim.new(0, 6)
-local InstantStk = Instance.new("UIStroke", respawnModeBtn); respawnStk.Color = C.BORDERL
+local InstantStk = Instance.new("UIStroke", InstantModeBtn); InstantStk.Color = C.BORDERL
 
 local function setModeActive(which)
     if which == "motor" then
